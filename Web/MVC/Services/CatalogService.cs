@@ -46,33 +46,25 @@ public class CatalogService : ICatalogService
 
     public async Task<IEnumerable<SelectListItem>> GetBrands()
     {
-        var result = await _httpClient.SendAsync<Catalog<CatalogBrand>, PaginatedRequest>($"{_settings.Value.CatalogUrl}/brands",
+        var result = await _httpClient.SendAsync<SupplementaryCollectionModel<CatalogBrand>, PaginatedRequest>($"{_settings.Value.CatalogUrl}/brands",
             HttpMethod.Post, null);
-        var list = new List<SelectListItem>();
-        foreach (var item in result.Data)
+        var list = new SelectList(result.Data, "Id", "Brand").Append(new SelectListItem()
         {
-            list.Add(new SelectListItem()
-            {
-                Text = item.Brand,
-                Value = item.Brand
-            });
-        }
+            Text = "All",
+            Value = ""
+        }); ;
         return list;
     }
 
     public async Task<IEnumerable<SelectListItem>> GetTypes()
     {
-        var result = await _httpClient.SendAsync<Catalog<CatalogType>, PaginatedRequest>($"{_settings.Value.CatalogUrl}/types",
+        var result = await _httpClient.SendAsync<SupplementaryCollectionModel<CatalogType>, PaginatedRequest>($"{_settings.Value.CatalogUrl}/types",
             HttpMethod.Post, null);
-        var list = new List<SelectListItem>();
-        foreach (var item in result.Data)
+        var list = new SelectList(result.Data, "Id", "Type").Append(new SelectListItem()
         {
-            list.Add(new SelectListItem()
-            {
-                Text = item.Type,
-                Value = item.Type
-            });
-        }
+            Text = "All",
+            Value = ""
+        });
         return list;
     }
 }
