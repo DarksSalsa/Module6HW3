@@ -4,10 +4,13 @@ using Catalog.Host.Models.Enums;
 using Catalog.Host.Models.Requests;
 using Catalog.Host.Models.Response;
 using Catalog.Host.Services.Interfaces;
+using Infrastructure.Identity;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Catalog.Host.Controllers;
 
 [ApiController]
+[Authorize(Policy = AuthPolicy.AllowEndUserPolicy)]
 [Route(ComponentDefaults.DefaultRoute)]
 public class CatalogBffController : ControllerBase
 {
@@ -26,6 +29,7 @@ public class CatalogBffController : ControllerBase
     }
 
     [HttpPost]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(PaginatedItemsResponse<CatalogItemDto>), (int)HttpStatusCode.OK)]
     public async Task<IActionResult> Items(PaginatedItemsRequest<CatalogTypeFilter> request)
     {
@@ -34,59 +38,10 @@ public class CatalogBffController : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(GetItemByIdResponse), (int)HttpStatusCode.OK)]
-    public async Task<IActionResult> GetById(UniversalGetByIdRequest request)
+    [ProducesResponseType((int)HttpStatusCode.OK)]
+    public IActionResult GetBrands()
     {
-        var result = await _catalogService.GetByIdAsync(request.Id);
-        if (result == null)
-        {
-            return BadRequest(new ErrorResponse() { ErrorMessage = "Undefined Id" });
-        }
-        else
-        {
-            return Ok(new GetItemByIdResponse()
-            {
-                Id = result.Id,
-                Name = result.Name,
-                Description = result.Description,
-                Price = result.Price,
-                PictureUrl = result.PictureUrl,
-                AvailableStock = result.AvailableStock,
-                CatalogType = result.CatalogType,
-                CatalogBrand = result.CatalogBrand
-            });
-        }
-    }
-
-    [HttpPost]
-    [ProducesResponseType(typeof(PaginatedItemsResponse<CatalogItemDto>), (int)HttpStatusCode.OK)]
-    public async Task<IActionResult> GetByBrand(PaginatedItemsByBrandRequest request)
-    {
-        var result = await _catalogService.GetByBrandAsync(request.Brand, request.PageIndex, request.PageSize);
-        return Ok(result);
-    }
-
-    [HttpPost]
-    [ProducesResponseType(typeof(PaginatedItemsResponse<CatalogItemDto>), (int)HttpStatusCode.OK)]
-    public async Task<IActionResult> GetByType(PaginatedItemsByTypeRequest request)
-    {
-        var result = await _catalogService.GetByTypeAsync(request.Type, request.PageIndex, request.PageSize);
-        return Ok(result);
-    }
-
-    [HttpPost]
-    [ProducesResponseType(typeof(UniversalGetItemsResponse<CatalogBrandDto>), (int)HttpStatusCode.OK)]
-    public async Task<IActionResult> Brands()
-    {
-        var result = await _catalogService.GetBrandsAsync();
-        return Ok(result);
-    }
-
-    [HttpPost]
-    [ProducesResponseType(typeof(UniversalGetItemsResponse<CatalogTypeDto>), (int)HttpStatusCode.OK)]
-    public async Task<IActionResult> Types()
-    {
-        var result = await _catalogService.GetTypesAsync();
-        return Ok(result);
+        _logger.LogInformation($"User Id {User.Claims.FirstOrDefault(x => x.Type == "sub")?.Value}");
+        return Ok();
     }
 }
