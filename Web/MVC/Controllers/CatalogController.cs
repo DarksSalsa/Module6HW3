@@ -19,7 +19,6 @@ public class CatalogController : Controller
         itemsPage ??= 6;
         
         var catalog = await _catalogService.GetCatalogItems(page.Value, itemsPage.Value, brandFilterApplied, typesFilterApplied);
-
         if (catalog == null)
         {
             return View("Error");

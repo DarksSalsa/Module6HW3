@@ -1,10 +1,13 @@
+using Catalog.Host;
 using Catalog.Host.Configurations;
 using Catalog.Host.Data;
 using Catalog.Host.Repositories;
 using Catalog.Host.Repositories.Interfaces;
 using Catalog.Host.Services;
 using Catalog.Host.Services.Interfaces;
+using Infrastructure.Extensions;
 using Infrastructure.Filters;
+using Microsoft.OpenApi.Models;
 
 var configuration = GetConfiguration();
 
@@ -16,17 +19,47 @@ builder.Services.AddControllers(options =>
     })
     .AddJsonOptions(options => options.JsonSerializerOptions.WriteIndented = true);
 
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "eShop- Catalog HTTP API",
+        Version = "v1",
+        Description = "The Catalog Service HTTP API"
+    });
+
+    var authority = configuration["Authorization:Authority"];
+    options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.OAuth2,
+        Flows = new OpenApiOAuthFlows()
+        {
+            Implicit = new OpenApiOAuthFlow()
+            {
+                AuthorizationUrl = new Uri($"{authority}/connect/authorize"),
+                TokenUrl = new Uri($"{authority}/connect/token"),
+                Scopes = new Dictionary<string, string>()
+                {
+                    { "mvc", "website" },
+                    { "catalog.catalogitem", "catalog.catalogitem" }
+                }
+            }
+        }
+    });
+
+    options.OperationFilter<AuthorizeCheckOperationFilter>();
+});
+
+builder.AddConfiguration();
 builder.Services.Configure<CatalogConfig>(configuration);
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddAuthorization(configuration);
+
 builder.Services.AddAutoMapper(typeof(Program));
 
 builder.Services.AddTransient<ICatalogItemRepository, CatalogItemRepository>();
 builder.Services.AddTransient<ICatalogService, CatalogService>();
 builder.Services.AddTransient<ICatalogItemService, CatalogItemService>();
-builder.Services.AddTransient<ICatalogBrandRepository, CatalogBrandRepository>();
-builder.Services.AddTransient<ICatalogBrandService, CatalogBrandService>();
-builder.Services.AddTransient<ICatalogTypeRepository, CatalogTypeRepository>();
-builder.Services.AddTransient<ICatalogTypeService, CatalogTypeService>();
 
 builder.Services.AddDbContextFactory<ApplicationDbContext>(opts => opts.UseNpgsql(configuration["ConnectionString"]));
 builder.Services.AddScoped<IDbContextWrapper<ApplicationDbContext>, DbContextWrapper<ApplicationDbContext>>();
@@ -44,10 +77,20 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwagger()
+    .UseSwaggerUI(setup =>
+    {
+        setup.SwaggerEndpoint($"{configuration["PathBase"]}/swagger/v1/swagger.json", "Catalog.API V1");
+        setup.OAuthClientId("catalogswaggerui");
+        setup.OAuthAppName("Catalog Swagger UI");
+    });
+
 app.UseRouting();
 app.UseCors("CorsPolicy");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapDefaultControllerRoute();
